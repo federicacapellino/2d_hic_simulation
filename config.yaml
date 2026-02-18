@@ -1,0 +1,54 @@
+"physics parameter":
+
+  "fluid evolution":
+    
+    tau0: 0.4        # in fm/c, initial time
+    tmax: 30.0       # in fm/c, final evolution time
+    norm: 100
+    eta_over_s: 0.2
+    zeta_over_s: 0.05
+    DsT: 0.2
+    Tfo: 0.156 # in GeV
+
+  "charm parameter":
+
+    dσ_QQdy: 0.4087 # in mb
+    σ_in: 70.0 # in mb
+
+  "initial conditions":
+    
+    det: :ALICE
+    s_NN: 5020 # MeV
+    n1: Lead()
+    n2: Lead()
+    w: 0.5
+    k: 0.5
+    p: 0.
+    b: (8,8) #options: tuple (bmin, bmax) or "minBias"
+  
+  "additional parameters": # please don't change if you don't know what you're doing
+    
+    tau_eta_par: 0.2
+    tau_zeta_par: 15.0
+    hq_mass: 1.5 # GeV
+
+"run parameter":
+  
+  Nev: 2
+  checkpoint_interval: 2
+  checkpoint_file: "event_by_event_results_debug.h5"
+  gridpoints: 100
+  xmax: 20.0 # fm
+  wavenum: [2,3]
+
+"slurm":
+  
+  max_time: 240
+  partition: main
+  work_directory: ./
+  cpus_per_job: 10               #Virgo: [cpus_per_job] * [max_concurrent_jobs] < 200
+  memory: 12G
+  number_of_jobs: 60
+  max_concurrent_jobs: 20 
+
+
