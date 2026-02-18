@@ -11,7 +11,6 @@ using OhMyThreads
 using Base.Threads
 using YAML
 using Plots
-@info "Julia threads" nthreads()
 
 include("MCglauber.jl")
 include("hdf5_io.jl")
@@ -33,7 +32,7 @@ twod_visc_hydro = Fields(
 )
 
 # Load configuration from YAML
-config = YAML.load_file("./examples/event-by-event/config.yaml")
+config = YAML.load_file("config.yaml")
 physics_params = config["physics parameter"]
 run_params = config["run parameter"]
 
@@ -91,13 +90,16 @@ end
 pion = particle_simple("pion", 0.13957, 1, 0)
 D0 = particle_simple("D0", 1.86483, 1, 1)
 
-Fj = fastreso_reader(pwd() * "/examples/event-by-event/PDGid_211_total_T0.1560_Fj.out")
+Fj = fastreso_reader(pwd() * "/PDGid_211_total_T0.1560_Fj.out")
 const particle_full_π = particle_full("pion", 0.13957, 1, 0, Fj[1])
-Fj = fastreso_reader(pwd() * "/examples/event-by-event/Dc1865zer_total_T0.1560_Fj.out")
+Fj = fastreso_reader(pwd() * "/Dc1865zer_total_T0.1560_Fj.out")
 const particle_full_D0 = particle_full("D0", 1.86483, 1, 1, Fj[1])
 
+
 species_list = [particle_full_π]
+species_list[1].mass
 event = rand(participants)
+epsilon_n_psi_n(event, 2)
 mult, x_com, y_com = center_of_mass(event, 100, 50)
 xcm = x_com / mult
 ycm = y_com / mult
@@ -149,26 +151,22 @@ vn_vector[1,1,:,:,1]
 
 spectra_pion1 = vn_vector[1,3,:,1,1]
 
-spectra_D01 = vn_vector[1,3,:,1,2]
 
-multiplicity_event(observable_result,[pion,D0])
-multiplicity_event(observable_result,[pion,D0])
+multiplicity_event(observable_result,species_list)
 
 sum(spectra_pion1)
-sum(spectra_D01)
-species_list = [particle_full_π, particle_full_D0]
+
 g = g_species_event_pt_dependent(observable_result,species_list)
 sum(g)
 q_vector_event_integrated(observable_result,species_list,[2,3])
-vns = [harmonic_coefficient([observable_result],species_list,[2,3]) for i in 1:10]
+vns = harmonic_coefficient([observable_result],species_list,[2,3])
 using LaTeXStrings
 default(lw = 2, size=(800,600),xtickfontsize=16,ytickfontsize=16,xlabelfontsize=16,ylabelfontsize=16,legendfontsize=16,grid=false,framestyle=:box)
+ptlist = pt_list(particle_full_π)
+plot(ptlist, vns.vm_result[:,1,1], label = L"v_2\, \mathrm{\pi}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+plot!(ptlist, vns.vm_result[:,1,2], label = L"v_3\, \mathrm{\pi}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+plot!(ptlist, vns.vm_result_charged[:,1,1], label = L"v_2\, \mathrm{charged}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+plot!(ptlist, vns.vm_result_charged[:,1,2], label = L"v_3\, \mathrm{charged}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n",legendtitle = L"\mathrm{0-10\% \,O-O}")
 
-plot!(vns[1].vm_result[:,1,1], label = L"v_2\, \mathrm{\pi}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[1].vm_result[:,1,2], label = L"v_3\, \mathrm{\pi}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[1].vm_result[:,2,1], label = L"v_2\, \mathrm{D^0}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[1].vm_result[:,2,2], label = L"v_3\, \mathrm{D^0}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[1].vm_result_charged[:,1,1], label = L"v_2\, \mathrm{charged}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[1].vm_result_charged[:,1,2], label = L"v_3\, \mathrm{charged}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n",legendtitle = L"\mathrm{0-10\% \,O-O}")
-
-
+vn_vector[1,1,:,:,1]
+vn_vector[1,3,:,:,1]

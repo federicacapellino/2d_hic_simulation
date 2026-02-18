@@ -5,19 +5,36 @@
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Check if a YAML config file was provided as argument
+# Check arguments.
+# Supported syntaxes:
+#   ./run_simulation.sh <config.yaml>
+#   ./run_simulation.sh <julia_script.jl> <config.yaml> [extra_julia_args...]
+# If a Julia script (ends with .jl) is provided as first arg, treat second arg as the YAML.
 if [ $# -lt 1 ]; then
     echo "❌ Error: No config YAML file provided"
     echo ""
-    echo "Usage: $0 <config.yaml> [optional_julia_args]"
+    echo "Usage: $0 [julia_script.jl] <config.yaml> [extra_julia_args...]"
     echo ""
     echo "Example:"
     echo "  sbatch $0 config.yaml"
-    echo "  $0 ../config.yaml"
+    echo "  sbatch $0 collision_event.jl config.yaml"
     exit 1
 fi
 
-CONFIG_YAML="$1"
+# Default Julia script to run (keeps backward compatibility)
+JULIA_SCRIPT="collision_event_yaml.jl"
+
+if [[ "$1" == *.jl ]] && [ $# -ge 2 ]; then
+    JULIA_SCRIPT="$1"
+    CONFIG_YAML="$2"
+    shift 2
+else
+    CONFIG_YAML="$1"
+    shift 1
+fi
+
+# Remaining arguments (if any) are forwarded to Julia
+JULIA_EXTRA_ARGS=("$@")
 
 # Check if the YAML file exists
 if [ ! -f "$CONFIG_YAML" ]; then
@@ -95,6 +112,19 @@ else
     # Create temporary SLURM job script
     JOB_SCRIPT="$SCRIPT_DIR/fluidum_job.slurm"
     
+    # Prepare quoted variables for safe embedding into the job script
+    if [[ "$JULIA_SCRIPT" == /* ]] || [[ "$JULIA_SCRIPT" == */* ]]; then
+        JULIA_CMD="$JULIA_SCRIPT"
+    else
+        JULIA_CMD="$SCRIPT_DIR/$JULIA_SCRIPT"
+    fi
+    JULIA_CMD_Q=$(printf '%q' "$JULIA_CMD")
+    CONFIG_YAML_Q=$(printf '%q' "$CONFIG_YAML")
+    JULIA_EXTRA_Q=""
+    for a in "${JULIA_EXTRA_ARGS[@]}"; do
+        JULIA_EXTRA_Q+=" $(printf '%q' "$a")"
+    done
+
     cat > "$JOB_SCRIPT" << SLURM_SCRIPT
 #!/bin/bash
 #SBATCH --job-name=fluidum-sim
@@ -112,7 +142,8 @@ echo "CPUs allocated: \$SLURM_CPUS_PER_TASK"
 echo ""
 
 cd "$SCRIPT_DIR"
-julia collision_event_yaml.jl "$CONFIG_YAML"
+echo "Running: julia $JULIA_CMD_Q $CONFIG_YAML_Q$JULIA_EXTRA_Q"
+julia $JULIA_CMD_Q $CONFIG_YAML_Q$JULIA_EXTRA_Q
 
 echo ""
 echo "Job completed at \$(date)"
