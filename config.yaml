@@ -50,5 +50,6 @@
   memory: 12G
   number_of_jobs: 60
   max_concurrent_jobs: 20 
+  container_image: julia_apptainer.sif  # Apptainer/Singularity image to run Julia in
 
 

@@ -52,12 +52,15 @@ fi
 parse_yaml() {
     local yaml_file=$1
     
-    # Use python to parse YAML
-    python3 << 'EOF'
-import yaml, shlex
+    # Use python to parse YAML. Pass the filename via environment to avoid
+    # accidental shell/heredoc interpolation of the filepath.
+    export YAML_FILE="$yaml_file"
+    python3 << 'PY'
+import os, yaml, shlex
 
-with open('$yaml_file', 'r') as f:
-    config = yaml.safe_load(f)
+yaml_file = os.environ.get('YAML_FILE')
+with open(yaml_file, 'r') as f:
+    config = yaml.safe_load(f) or {}
 
 slurm = config.get('slurm', {})
 
@@ -71,11 +74,19 @@ print(f"CPUS_PER_JOB={q(slurm.get('cpus_per_job'))}")
 print(f"MEMORY={q(slurm.get('memory'))}")
 print(f"NUM_JOBS={q(slurm.get('number_of_jobs'))}")
 print(f"MAX_CONCURRENT={q(slurm.get('max_concurrent_jobs'))}")
-EOF
+print(f"CONTAINER_IMAGE={q(slurm.get('container_image'))}")
+PY
 }
 
 # Parse the provided YAML file
 eval "$(parse_yaml "$CONFIG_YAML")"
+
+# Choose container image: prefer YAML `CONTAINER_IMAGE`, then env `CONTAINER_IMG`, then default
+if [ -z "${CONTAINER_IMAGE}" ] || [ "${CONTAINER_IMAGE}" = "''" ]; then
+    CONTAINER_IMG="${CONTAINER_IMG:-julia_apptainer.sif}"
+else
+    CONTAINER_IMG="$CONTAINER_IMAGE"
+fi
 
 # Validate that required SLURM parameters were provided in the YAML
 required_vars=(MAX_TIME PARTITION WORK_DIR CPUS_PER_JOB MEMORY NUM_JOBS MAX_CONCURRENT)
@@ -98,8 +109,7 @@ if ! command -v sbatch &> /dev/null; then
     export JULIA_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
     export JULIA_PKG_PRECOMPILE_AUTO=0
 
-    # Container image (can be overridden via environment)
-    CONTAINER_IMG="${CONTAINER_IMG:-julia_apptainer.sif}"
+    # Container image selected from YAML/env/default: $CONTAINER_IMG
 
     # Bind the script directory into the container at /mnt and run there
     JULIA_RUN_SCRIPT_BASENAME=$(basename "$JULIA_SCRIPT")
@@ -136,8 +146,6 @@ else
     for a in "${JULIA_EXTRA_ARGS[@]}"; do
         JULIA_EXTRA_Q+=" $(printf '%q' "$a")"
     done
-    # Container image (can be overridden via environment)
-    CONTAINER_IMG="${CONTAINER_IMG:-julia_apptainer.sif}"
     CONTAINER_IMG_Q=$(printf '%q' "$CONTAINER_IMG")
     JULIA_BASENAME_Q=$(printf '%q' "$(basename "$JULIA_CMD")")
 
