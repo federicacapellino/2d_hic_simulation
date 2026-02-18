@@ -41,7 +41,8 @@ else
 end
 
 @info "Loading configuration from: $config_file"
-config = YAML.load_file(config_file)
+#config = YAML.load_file(config_file)
+config = YAML.load_file("config.yaml")
 physics_params = config["physics parameter"]
 run_params = config["run parameter"]
 
@@ -107,7 +108,7 @@ const particle_full_π = particle_full("pion", 0.13957, 1, 0, Fj[1])
 Fj = fastreso_reader(pwd() * "/examples/event-by-event/Dc1865zer_total_T0.1560_Fj.out")
 const particle_full_D0 = particle_full("D0", 1.86483, 1, 1, Fj[1])
 
-
+species_list = [particle_full_π]
 function run_event(
         participants, twod_visc_hydro_discrete, norm; eta_p = 0.0,
         wavenum_m = [2, 3], species_list = [pion, D0]
@@ -138,20 +139,15 @@ function run_event(
     viscosity = QGPViscosity(eta_over_s, tau_eta_par)
     bulk = SimpleBulkViscosity(zeta_over_s, tau_zeta_par)
     diffusion = ZeroDiffusion() #maybe diffusion too large?
-    @show charm_number_hard(ncoll_event;xmax=20.,ncoll_norm = ccbar_norm)
+   # @show charm_number_hard(ncoll_event;xmax=20.,ncoll_norm = ccbar_norm)
     fluidproperty = FluidProperties(eos, viscosity, bulk, diffusion)
 
     #setup fields
     temperature_func = trento_event_eos(profile, norm = norm, exp_tail = false)
-    fug_func = fug_(temperature_func, ncoll_event, eos, discretization; ncoll_norm = ccbar_norm)
+   # fug_func = fug_(temperature_func, ncoll_event, eos, discretization; ncoll_norm = ccbar_norm)
 
     phi = set_array(temperature_func .+ 0.01, :temperature, twod_visc_hydro_discrete)  #maybe offset too large?
-    set_array!(phi, fug_func, :mu, twod_visc_hydro_discrete)
-    @show maximum(phi[8,:,:])
-    
-    # Plot phi[8,:,:] and save to PDF
-    #p = heatmap(phi[8,:,:], title="phi[8,:,:]", xlabel="x", ylabel="y")
-    #savefig(p, "phi_8_plot.pdf")
+   # set_array!(phi, fug_func, :mu, twod_visc_hydro_discrete)
 
     simulation_pars = (
         dσ_QQdy = dσ_QQdy,
@@ -186,7 +182,7 @@ function run_event_by_event(Nev)
         result = run_event(
             participants,
             twod_visc_hydro_discrete,
-            norm; species_list = [particle_full_π, particle_full_D0]
+            norm; species_list = species_list
         )
         result
     end
