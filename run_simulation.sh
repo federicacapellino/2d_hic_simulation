@@ -92,8 +92,20 @@ echo ""
 if ! command -v sbatch &> /dev/null; then
     echo "⚠️  SLURM not found - running locally without SLURM"
     echo ""
-    echo "Starting Julia simulation with config: $CONFIG_YAML"
-    julia "$SCRIPT_DIR/collision_event_yaml.jl" "$CONFIG_YAML"
+    echo "Starting Julia simulation with config: $CONFIG_YAML inside Apptainer"
+
+    # Configure container and Julia environment
+    export JULIA_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
+    export JULIA_PKG_PRECOMPILE_AUTO=0
+
+    # Container image (can be overridden via environment)
+    CONTAINER_IMG="${CONTAINER_IMG:-julia_apptainer.sif}"
+
+    # Bind the script directory into the container at /mnt and run there
+    JULIA_RUN_SCRIPT_BASENAME=$(basename "$JULIA_SCRIPT")
+    echo "Starting Julia script with $JULIA_NUM_THREADS threads using image $CONTAINER_IMG"
+    apptainer exec --bind "$SCRIPT_DIR":/mnt --pwd /mnt "$CONTAINER_IMG" \
+        julia --project=. "$JULIA_RUN_SCRIPT_BASENAME" "$CONFIG_YAML" "${JULIA_EXTRA_ARGS[@]}"
 else
     echo "========================================"
     echo "  🌊 FLUIDUM Simulation Launcher 🌊"
@@ -124,6 +136,10 @@ else
     for a in "${JULIA_EXTRA_ARGS[@]}"; do
         JULIA_EXTRA_Q+=" $(printf '%q' "$a")"
     done
+    # Container image (can be overridden via environment)
+    CONTAINER_IMG="${CONTAINER_IMG:-julia_apptainer.sif}"
+    CONTAINER_IMG_Q=$(printf '%q' "$CONTAINER_IMG")
+    JULIA_BASENAME_Q=$(printf '%q' "$(basename "$JULIA_CMD")")
 
     cat > "$JOB_SCRIPT" << SLURM_SCRIPT
 #!/bin/bash
@@ -142,8 +158,14 @@ echo "CPUs allocated: \$SLURM_CPUS_PER_TASK"
 echo ""
 
 cd "$SCRIPT_DIR"
-echo "Running: julia $JULIA_CMD_Q $CONFIG_YAML_Q$JULIA_EXTRA_Q"
-julia $JULIA_CMD_Q $CONFIG_YAML_Q$JULIA_EXTRA_Q
+export JULIA_NUM_THREADS=\${SLURM_CPUS_PER_TASK:-1}
+export JULIA_PKG_PRECOMPILE_AUTO=0
+CONTAINER_IMG="$CONTAINER_IMG_Q"
+
+echo "Starting Julia collision script with \$JULIA_NUM_THREADS threads..."
+
+apptainer exec --bind "$SCRIPT_DIR":/mnt --pwd /mnt "$CONTAINER_IMG" \
+    julia --project=. $JULIA_BASENAME_Q $CONFIG_YAML_Q$JULIA_EXTRA_Q
 
 echo ""
 echo "Job completed at \$(date)"
