@@ -42,7 +42,7 @@ end
 
 @info "Loading configuration from: $config_file"
 #config = YAML.load_file(config_file)
-config = YAML.load_file("config.yaml")
+config = YAML.load_file(config_file)
 physics_params = config["physics parameter"]
 run_params = config["run parameter"]
 
@@ -103,9 +103,9 @@ end
 pion = particle_simple("pion", 0.13957, 1, 0)
 D0 = particle_simple("D0", 1.86483, 1, 1)
 
-Fj = fastreso_reader(pwd() * "/examples/event-by-event/PDGid_211_total_T0.1560_Fj.out")
+Fj = fastreso_reader(pwd() * "/PDGid_211_total_T0.1560_Fj.out")
 const particle_full_π = particle_full("pion", 0.13957, 1, 0, Fj[1])
-Fj = fastreso_reader(pwd() * "/examples/event-by-event/Dc1865zer_total_T0.1560_Fj.out")
+Fj = fastreso_reader(pwd() * "/Dc1865zer_total_T0.1560_Fj.out")
 const particle_full_D0 = particle_full("D0", 1.86483, 1, 1, Fj[1])
 
 species_list = [particle_full_π]
@@ -176,7 +176,7 @@ function run_event(
 end
 
 
-function run_event_by_event(Nev)
+#=function run_event_by_event(Nev)
     return tmap(1:Nev) do i
         println("Running event $i / $Nev")
         result = run_event(
@@ -186,8 +186,20 @@ function run_event_by_event(Nev)
         )
         result
     end
-end
+end=#
 
+function run_event_by_event(Nev)
+    return tmap(1:Nev) do i
+        try
+            println("Running event $i / $Nev")
+            return run_event(participants, twod_visc_hydro_discrete, norm; species_list = species_list)
+        catch e
+            @warn "Event $i failed due to numerical instability: $e"
+            # Return a "null" result so the batch can continue
+            return (null_observable(wavenum_m, species_list), (error="Singular Matrix", event_id=i))
+        end
+    end
+end
 
 function progress_bar(fraction; width = 30)
     filled = round(Int, fraction * width)

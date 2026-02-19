@@ -22,9 +22,9 @@
     n1: Lead()
     n2: Lead()
     w: 0.5
-    k: 0.5
+    k: 1.
     p: 0.
-    b: (8,8) #options: tuple (bmin, bmax) or "minBias"
+    b: "minBias" #options: tuple (bmin, bmax) or "minBias"
   
   "additional parameters": # please don't change if you don't know what you're doing
     
@@ -34,8 +34,8 @@
 
 "run parameter":
   
-  Nev: 2
-  checkpoint_interval: 2
+  Nev: 100000
+  checkpoint_interval: 500
   checkpoint_file: "event_by_event_results_debug.h5"
   gridpoints: 100
   xmax: 20.0 # fm
@@ -43,13 +43,13 @@
 
 "slurm":
   
-  max_time: 240
-  partition: main
+  max_time: 30
+  partition: debug
   work_directory: ./
-  cpus_per_job: 10               #Virgo: [cpus_per_job] * [max_concurrent_jobs] < 200
+  cpus_per_job: 20               #Virgo: [cpus_per_job] * [max_concurrent_jobs] < 200
   memory: 12G
-  number_of_jobs: 60
+  number_of_jobs: 1
   max_concurrent_jobs: 20 
-  container_image: julia_apptainer.sif  # Apptainer/Singularity image to run Julia in
+  container_image: /lustre/alice/users/fcapell/julia_apptainer.sif  # Apptainer/Singularity image to run Julia in
 
 
