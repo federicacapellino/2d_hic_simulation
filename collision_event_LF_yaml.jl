@@ -116,6 +116,7 @@ function run_event(
     discretization = twod_visc_hydro_discrete.discretization
     #create event
     event = rand(participants)
+    b = impactParameter(event)
     #compute center of mass
     mult, x_com, y_com = center_of_mass(event, 100, 50)
     xcm = x_com / mult
@@ -172,7 +173,7 @@ function run_event(
     #run observables
     vn = dvn_dp_list_delta(fo_bg, species_list, eta_p, wavenum_m; eta_min = -5.0, eta_max = 5.0)
 
-    return ObservableResult(mult, vn.u), simulation_pars
+    return ObservableResult(mult, b, vn.u), simulation_pars
 end
 
 

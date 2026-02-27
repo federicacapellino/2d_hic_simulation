@@ -1,13 +1,14 @@
 
 struct ObservableResult
     glauber_multiplicity::Float64
+    impact_parameter::Float64
     vn::Array{Float64,4} # (cos, sin, denom) x length(pTlist) x length(wavenum_m) x length(species_list)
 end
 
-null_observable() = ObservableResult(0.0, Array{Float64}(undef, 3, 0, 0, 0))
+null_observable() = ObservableResult(0.0, 0.0,Array{Float64}(undef, 3, 0, 0, 0))
 function null_observable(wavenum,species_list)
     pt_length_max = maximum(length.(pt_list.(species_list)))
-    ObservableResult(0.0, zeros(3, pt_length_max, length(wavenum), length(species_list)))
+    ObservableResult(0.0, 0.0, zeros(3, pt_length_max, length(wavenum), length(species_list)))
 end
 """
     append_to_dataset!(file, dataset_name, new_data)
@@ -84,12 +85,22 @@ extract_vn(data::Vector{ObservableResult}) =
 
 
 """
+    extract_impact_parameter(data)
+
+Extract impact parameter values from ObservableResult vector.
+"""
+extract_impact_parameter(data::Vector{ObservableResult}) = 
+    [d.impact_parameter for d in data]
+
+
+"""
     append_to_h5(filename, data, metadata)
 
 Append ObservableResult data to an HDF5 file. Creates the file if it doesn't exist. If the file doesn't exist, also writes metadata as attributes.
 """
 function append_to_h5(filename, data::Vector{ObservableResult}, metadata::NamedTuple)
     glauber_data = extract_glauber_multiplicity(data)
+    impact_parameter_data = extract_impact_parameter(data)  
    # pt_data = extract_pt_list(data)
     vn_data = extract_vn(data)
     
@@ -98,6 +109,7 @@ function append_to_h5(filename, data::Vector{ObservableResult}, metadata::NamedT
         if check_metadata(metadata, meta2)
             h5open(filename, "r+") do file
             append_to_dataset!(file, "glauber_multiplicity", glauber_data)
+            append_to_dataset!(file, "impact_parameter", impact_parameter_data)
             #append_to_dataset!(file, "pt_list", pt_data)
             append_to_dataset!(file, "vn", vn_data)
             end
@@ -106,6 +118,7 @@ function append_to_h5(filename, data::Vector{ObservableResult}, metadata::NamedT
             h5open(new_filename, "w") do file
             append_metadata!(file, metadata)
             create_extensible_dataset!(file, "glauber_multiplicity", glauber_data)
+            create_extensible_dataset!(file, "impact_parameter", impact_parameter_data)
             #create_extensible_dataset!(file, "pt_list", pt_data)
             create_extensible_dataset!(file, "vn", vn_data)
             end
@@ -115,6 +128,7 @@ function append_to_h5(filename, data::Vector{ObservableResult}, metadata::NamedT
         h5open(filename, "w") do file
             append_metadata!(file, metadata)
             create_extensible_dataset!(file, "glauber_multiplicity", glauber_data)
+            create_extensible_dataset!(file, "impact_parameter", impact_parameter_data)
             #create_extensible_dataset!(file, "pt_list", pt_data)
             create_extensible_dataset!(file, "vn", vn_data)
         end
@@ -163,12 +177,12 @@ end
 function hdf5_to_ObservableResult(h5_file::AbstractString)
     isfile(h5_file) || error("HDF5 file not found: $h5_file")
 
-    glauber_data, vn_data = h5open(h5_file, "r") do file
-        (read(file["glauber_multiplicity"]), read(file["vn"]))
+    glauber_data, impact_parameter_data, vn_data = h5open(h5_file, "r") do file
+        (read(file["glauber_multiplicity"]), read(file["impact_parameter"]), read(file["vn"]))
     end
         
         Nev = size(glauber_data, 1)
-        return [ObservableResult(glauber_data[i], vn_data[i, :, :, :, :]) for i in 1:Nev]
+        return [ObservableResult(glauber_data[i], impact_parameter_data[i], vn_data[i, :, :, :, :]) for i in 1:Nev]
 end
 
 
