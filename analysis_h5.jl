@@ -1,126 +1,113 @@
 using Plots
+using Fluidum
+using MonteCarloGlauber
+using StaticArrays
+using LinearAlgebra
+using Integrals
+using Cuba
+using JLD2
+using HDF5
+using MuladdMacro
+using OhMyThreads
+using Base.Threads
+using YAML
+using LaTeXStrings
+using Statistics
+
+default(lw = 2, size=(800,600),xtickfontsize=16,ytickfontsize=16,xlabelfontsize=16,ylabelfontsize=16,legendfontsize=16,grid=false,framestyle=:box)
+
+include("MCglauber.jl")
+include("hdf5_io.jl")
+include("observables.jl")
+include("fastreso.jl")
 
 data = hdf5_to_ObservableResult(pwd()*"/event_by_event_results_debug.h5")
 glauber_vec = extract_glauber_multiplicity(data)
-vn_vector = extract_vn(data)
-
-
-Fj = fastreso_reader(pwd()*"/examples/event-by-event/PDGid_211_total_T0.1560_Fj.out")
+Nev= length(glauber_vec)
+Fj = fastreso_reader(pwd()*"/PDGid_211_total_T0.1560_Fj.out")
 particle_full_π = particle_full("pion",0.13957,1,0,Fj[1])
-Fj = fastreso_reader(pwd()*"/examples/event-by-event/Dc1865zer_total_T0.1560_Fj.out")
+Fj = fastreso_reader(pwd()*"/Dc1865zer_total_T0.1560_Fj.out")
 particle_full_D0 = particle_full("D0",1.86483,1,1,Fj[1])
 
-species_list = [particle_full_π, particle_full_D0]
-
-spectra_pion1 = vn_vector[end,3,:,1,1]
-spectra_pion2 = vn_vector[end-1,3,:,1,1]
-
-spectra_D01 = vn_vector[end,3,:,1,2]
-spectra_D02 = vn_vector[end-1,3,:,1,2]
+species_list = [particle_full_π]
 
 
-sum(spectra_pion1)
-sum(spectra_pion2)
-sum(spectra_D01)
-sum(spectra_D02)
-plot(spectra_D01)
-plot(spectra_pion1)
-plot!(spectra_pion2)
+centrality_bins=[10,20,30,40,50,60]
+data_chunks = centralities_selection_events(data,centrality_bins)
 
-p = plot(pt_list, spectra_pion[1,:],yscale = :log10)
-for i in 2:cc_ev_num
-   plot!(pt_list, spectra_pion[i,:],yscale = :log10, legend=false)
-end
-
-spectra_D0 = vn_vector[sorted_indices,3,:,1,2]
-plot!(pt_list, spectra_D0[1,:],yscale = :log10)
-for i in 2:cc_ev_num
-   plot!(pt_list, spectra_D0[i,:],yscale = :log10, legend=false)    
-end
-display(p)
-
-# CENTRALITY CLASSES
-
-"""
-divides data into cc_fraction centrality classes based on final particle multiplicity
-WIP ...
-"""
-function select_cc_events_multiplicity(data,cc_fraction)
-    vn_vec = extract_vn(data)
-    mult_vec = [total_M(result_single_event,species_list) for result_single_event in data]
-    sorted_indices = sortperm(mult_vec,rev=true)
-    Nev = length(mult_vec)
-    cc_ev_num = div(cc_fraction*Nev,100)
-    selected_data = [data[sorted_indices[1+i*cc_ev_num:cc_ev_num+i*cc_ev_num]] for i in 0:cc_fraction-1]
-    return selected_data
-end
-data
-
-data_chunks = select_cc_events_glauber(data,10)
-
-plot!((sum(extract_vn(data_chunks[2]), dims=1)/1152)[1,3,:,1,1])
-
-
-mult=[sum(spectra(data_chunks[i],species_list)[:,1]) for i in 1:10]
-scatter(mult, yscale=:log10)
-mult=[sum(spectra(data_chunks[i],species_list)[:,2]) for i in 1:10]
-scatter!(mult, yscale=:log10)
-event_list = data_chunks[1]
-plot(spectra(data_chunks[1],species_list))
-plot!(spectra(data_chunks[4],species_list))
-
-plot!(spectra_event.(data_chunks[2],Ref(species_list)))
-
+pt_list_pi = particle_full_π.pt_list
 
 q_vector_event_pt_dependent(data_chunks[1][1],species_list,[2,3])
 #q_vector_event_pt_dependent_im(data_chunks[1][1],species_list,[2,3])
 multiplicity_event(data_chunks[1][1],species_list)
 
-g = g_species_event_pt_dependent(data_chunks[1][1],species_list)
+g = g_species_event_pt_dependent(data_chunks[2][190],species_list)
 sum(g)
-q_vector_event_integrated(data_chunks[5][1],species_list,[2,3])
+q_vector_event_integrated_complex(data_chunks[2][1],species_list,[2,3])
 
 
-vns = [harmonic_coefficient(data_chunks[i],species_list,[2,3]) for i in 1:10]
+vns = [harmonic_coefficient_complex(data_chunks[i],species_list,[2,3]) for i in eachindex(centrality_bins)]
+plot(pt_list_pi, (real.(vns[1].vm_result[:,1,1])), label = L"v_2\, \mathrm{\pi} 0-10", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+#plot!(pt_list_pi,(real.(vns[1].vm_result[:,1,2])), label = L"v_3\, \mathrm{\pi} 0-10", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+plot!(pt_list_pi,(real.(vns[2].vm_result[:,1,1])), label = L"v_2\, \mathrm{\pi} 10-20", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+#plot!(pt_list_pi,(real.(vns[2].vm_result[:,1,2])), label = L"v_3\, \mathrm{\pi} 10-20", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+plot!(pt_list_pi,(real.(vns[3].vm_result[:,1,1])), label = L"v_2\, \mathrm{\pi} 20-30", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+plot!(pt_list_pi,(real.(vns[4].vm_result[:,1,1])), label = L"v_2\, \mathrm{\pi} 40-50", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+plot!(pt_list_pi,(real.(vns[5].vm_result[:,1,1])), label = L"v_2\, \mathrm{\pi} 50-60", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
 
-using LaTeXStrings
-default(lw = 2, size=(800,600),xtickfontsize=16,ytickfontsize=16,xlabelfontsize=16,ylabelfontsize=16,legendfontsize=16,grid=false,framestyle=:box)
+#plot!(pt_list_pi,(real.(vns[4].vm_result[:,1,2])), label = L"v_3\, \mathrm{\pi} 20-30", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"Re v_n")
 
-plot(vns[1].vm_result[:,1,1], label = L"v_2\, \mathrm{\pi}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[1].vm_result[:,1,2], label = L"v_3\, \mathrm{\pi}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[1].vm_result[:,2,1], label = L"v_2\, \mathrm{D^0}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[1].vm_result[:,2,2], label = L"v_3\, \mathrm{D^0}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+#plot!(vns[1].vm_result[:,2,1], label = L"v_2\, \mathrm{D^0}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+#plot!(vns[1].vm_result[:,2,2], label = L"v_3\, \mathrm{D^0}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
 plot!(vns[1].vm_result_charged[:,1,1], label = L"v_2\, \mathrm{charged}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[1].vm_result_charged[:,1,2], label = L"v_3\, \mathrm{charged}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n",legendtitle = L"\mathrm{0-10\% \,O-O}")
+plot!(vns[1].vm_result_charged[:,1], label = L"v_3\, \mathrm{charged}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n",legendtitle = L"\mathrm{0-10\% \,O-O}")
 
 
-plot(vns[3].vm_result[:,1,1], label = L"v_2\, \mathrm{\pi}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[3].vm_result[:,1,2], label = L"v_3\, \mathrm{\pi}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[3].vm_result[:,2,1], label = L"v_2\, \mathrm{D^0}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
-plot!(vns[3].vm_result[:,2,2], label = L"v_3\, \mathrm{D^0}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+plot!(vns[2].vm_result[:,1,1], label = L"v_2\, \mathrm{\pi}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+plot!(vns[2].vm_result[:,1,2], label = L"v_3\, \mathrm{\pi}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+#plot!(vns[3].vm_result[:,2,1], label = L"v_2\, \mathrm{D^0}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
+#plot!(vns[3].vm_result[:,2,2], label = L"v_3\, \mathrm{D^0}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
 plot!(vns[3].vm_result_charged[:,1,1], label = L"v_2\, \mathrm{charged}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n")
 plot!(vns[3].vm_result_charged[:,1,2], label = L"v_3\, \mathrm{charged}", xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"v_n",legendtitle = L"\mathrm{20-30\% \,O-O}")
+vns[1].vm_result_charged_integrated
+
+scatter(centrality_bins,[real(vns[i].vm_result_integrated[1,1]) for i in eachindex(centrality_bins)],xlabel = "Centrality class", label = L"v_2\, \mathrm{\pi}")
+real(vns[4].vm_result_integrated[1,1])
+
+vni = extract_vn(data_chunks[4])
+mult = mean([sum(vni[i,3,:,1,1]) for i in axes(vni,1)])
+mult_per_bin = mean(vni, dims = 1)[1,3,:,1,1]
+vn_pt = real.(vns[4].vm_result[:,1,1])
+sum(transpose(vn_pt)*mult_per_bin)/mult
+#plot!([vns[i].vm_result_integrated[2,1] for i in 1:10],xlabel = "Centrality class", label = L"v_2\, \mathrm{D^0}")
+
+plot!([real(vns[i].vm_result_integrated[1,2]) for i in 1:4])
 
 
-spectra_event(data_chunks[1][1],species_list)
-spectra(data_chunks[1],species_list)
-plot(spectra(data_chunks[1],species_list)[:,1], xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"\frac{dN}{dyp_Tdp_T}",yscale=:log10)
-plot!(spectra(data_chunks[2],species_list)[:,1], xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"\frac{dN}{dyp_Tdp_T}",yscale=:log10)
-plot!(spectra(data_chunks[5],species_list)[:,1], xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"\frac{dN}{dyp_Tdp_T}",yscale=:log10)
 
-plot!(spectra(data_chunks[1],species_list)[:,2], xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"\frac{dN}{dyp_Tdp_T}",yscale=:log10)
-plot!(spectra(data_chunks[2],species_list)[:,2], xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"\frac{dN}{dyp_Tdp_T}",yscale=:log10)
-plot!(spectra(data_chunks[5],species_list)[:,2], xlabel = L"p_T\, \mathrm{[GeV]}", ylabel = L"\frac{dN}{dyp_Tdp_T}",yscale=:log10)
+#single events
 
-plot!(vns[1].vm_result[:,2,1])
-plot!(vns[1].vm_result[:,2,2])
+    pTlists = pt_list.(species_list)        
+    pt_length_max = maximum(length.(pt_list.(species_list)))
+    
+    vm_result = zeros(pt_length_max,length(species_list),length(wavenum_list))
+    vm_result_integrated = zeros(length(species_list),length(wavenum_list))
+    vm_result_charged = zeros(pt_length_max,length(wavenum_list))
+    vm_result_charged_integrated = zeros(length(wavenum_list))
+        
+    for result in event_list        
+        q_vector_pt = q_vector_event_pt_dependent(result,species_list,wavenum_list)
+        q_vector_total = q_vector_event_integrated(result,species_list,wavenum_list)
 
-plot!(vns[1].vm_result_charged[:,1,1])
-plot!(vns[1].vm_result_charged[:,1,2])
+        for k in eachindex(species_list)
+            pTlist = pTlists[k]
+            for i in eachindex(pTlist)
+                for wavenum in eachindex(wavenum_list)
+                    vm_result[i,k,wavenum] += q_vector_pt[i,k,wavenum]*q_vector_total[wavenum]/length(event_list)
+                end
+            end
+        end
 
-plot([vns[i].vm_result_integrated[1,1,1] for i in 1:10],xlabel = "Centrality class", label = L"v_2\, \mathrm{\pi}")
-plot!([vns[i].vm_result_integrated[1,2,1] for i in 1:10],xlabel = "Centrality class", label = L"v_2\, \mathrm{D^0}")
-
-plot!([vns[i].vm_result_integrated[1,2,1] for i in 1:10])
+    end
 
 

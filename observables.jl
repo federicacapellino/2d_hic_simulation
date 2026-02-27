@@ -180,7 +180,7 @@ function spectra(event_list,species_list)
     pt_length_max = maximum(length.(pt_list.(species_list)))
     spectra_result = zeros(pt_length_max,length(species_list))
     for result in event_list
-        glauber, vn = result.glauber_multiplicity, result.vn 
+        vn = result.vn 
         for k in eachindex(species_list)
             pTlist = pTlists[k]
             for i in eachindex(pTlist)
@@ -198,7 +198,7 @@ multiplicity_event(result::ObservableResult,species_list)
 returns the total multiplicity M of all charged particles and identified particles in the species list for a given event result
 """
 function multiplicity_event(result::ObservableResult,species_list)
-    glauber, vn = result.glauber_multiplicity, result.vn
+    vn = result.vn
     pTlists = pt_list.(species_list)
     M = 0.
     M_species = zeros(length(species_list))
@@ -211,7 +211,6 @@ function multiplicity_event(result::ObservableResult,species_list)
     end
     return (total_multiplicity = M, identified_multiplicity = M_species)
 end
-
 
 """
 q_vector_event_pt_dependent(result::ObservableResult,species_list, wavenum_list)
@@ -228,13 +227,34 @@ function q_vector_event_pt_dependent(result::ObservableResult,species_list, wave
         pTlist = pTlists[k]
         for i in eachindex(pTlist)
             for wavenum in eachindex(wavenum_list)
-                qvec_result[i,k,wavenum]+= sqrt(vn[1,i,wavenum,k]^2+vn[2,i,wavenum,k]^2)/vn[3,i,wavenum,k]
+                qvec_result[i,k,wavenum] = sqrt(vn[1,i,wavenum,k]^2+vn[2,i,wavenum,k]^2)/vn[3,i,wavenum,k] #change!!
             end
         end
     end
     return qvec_result
 end
 
+"""
+q_vector_event_pt_dependent(result::ObservableResult,species_list, wavenum_list)
+
+
+given a result::ObservableResult, computes the real q-vector as a function of pT for each species in species_list and wavenumber in wavenum_list
+"""
+function q_vector_event_pt_dependent_complex(result::ObservableResult,species_list, wavenum_list)
+    pTlists = pt_list.(species_list)
+    pt_length_max = maximum(length.(pt_list.(species_list)))
+    vn = result.vn
+    qvec_result = zeros(Complex,pt_length_max,length(species_list),length(wavenum_list))
+    for k in eachindex(species_list)
+        pTlist = pTlists[k]
+        for i in eachindex(pTlist)
+            for wavenum in eachindex(wavenum_list)
+                qvec_result[i,k,wavenum] = (vn[1,i,wavenum,k]+im*vn[2,i,wavenum,k])/vn[3,i,wavenum,k] 
+            end
+        end
+    end
+    return qvec_result
+end
 """
 g_species_event_pt_dependent(result::ObservableResult,species_list)
 
@@ -244,7 +264,7 @@ returns the multiplicity of each species in each pt bin normalized by the total 
 function g_species_event_pt_dependent(result::ObservableResult,species_list)
     pTlists = pt_list.(species_list)
     pt_length_max = maximum(length.(pt_list.(species_list)))
-    glauber, vn = result.glauber_multiplicity, result.vn
+    vn = result.vn
     g_result = zeros(pt_length_max,length(species_list))
     M_total = multiplicity_event(result,species_list).total_multiplicity
     for k in eachindex(species_list)
@@ -265,16 +285,32 @@ given a result::ObservableResult, computes the integrated q-vector for each wave
 """
 function q_vector_event_integrated(result::ObservableResult,species_list, wavenum_list)
     pTlists = pt_list.(species_list)        
-    glauber, vn = result.glauber_multiplicity, result.vn
+    vn = result.vn
     q_result = zeros(length(wavenum_list))
     g = g_species_event_pt_dependent(result,species_list)
     q_vector = q_vector_event_pt_dependent(result,species_list,wavenum_list)
-    for k in eachindex(species_list)
-        pTlist = pTlists[k]
-        for i in eachindex(pTlist)
-            for wavenum in eachindex(wavenum_list)
-                wavenum_m=wavenum_list[wavenum]
-                q_result[wavenum] += g[i,k] * q_vector[i,k,wavenum] #average over events  for q is missing!!!
+    for wavenum in eachindex(wavenum_list)   
+        for k in eachindex(species_list)
+            pTlist = pTlists[k]
+            for i in eachindex(pTlist)
+                q_result[wavenum] += g[i,k] * q_vector[i,k,wavenum] 
+            end
+        end
+    end
+    return q_result
+end
+
+function q_vector_event_integrated_complex(result::ObservableResult,species_list, wavenum_list)
+    pTlists = pt_list.(species_list)        
+    vn = result.vn
+    q_result = zeros(Complex,length(wavenum_list))
+    g = g_species_event_pt_dependent(result,species_list)
+    q_vector = q_vector_event_pt_dependent_complex(result,species_list,wavenum_list)
+    for wavenum in eachindex(wavenum_list)   
+        for k in eachindex(species_list)
+            pTlist = pTlists[k]
+            for i in eachindex(pTlist)
+                q_result[wavenum] += g[i,k] * q_vector[i,k,wavenum] 
             end
         end
     end
@@ -311,15 +347,56 @@ function harmonic_coefficient(event_list,species_list, wavenum_list)
 
     end
 
-    vm_result_integrated = sum(vm_result, dims=1)
-    vm_result_charged = sum(vm_result, dims=2)
-    vm_result_charged_integrated = sum(vm_result_charged, dims=1)
+    vm_result_integrated = dropdims(sum(vm_result, dims=1), dims=1)
+    vm_result_charged = dropdims(sum(vm_result, dims=2), dims=2)
+    vm_result_charged_integrated = dropdims(sum(vm_result_charged, dims=1), dims=1)
 
     return (vm_result=vm_result, vm_result_integrated=vm_result_integrated, vm_result_charged=vm_result_charged, vm_result_charged_integrated=vm_result_charged_integrated)
 
    
 end
+function harmonic_coefficient_complex(event_list,species_list, wavenum_list)
+    pTlists = pt_list.(species_list)        
+    pt_length_max = maximum(length.(pt_list.(species_list)))
+    
+    vm_result = zeros(Complex,pt_length_max,length(species_list),length(wavenum_list))
+    vm_result_integrated = zeros(Complex,length(species_list),length(wavenum_list))
+    vm_result_charged = zeros(Complex,pt_length_max,length(wavenum_list))
+    vm_result_charged_integrated = zeros(Complex,length(wavenum_list))
+        
+    for result in event_list        
+        q_vector_pt = q_vector_event_pt_dependent_complex(result,species_list,wavenum_list)
+        q_vector_total = q_vector_event_integrated_complex(result,species_list,wavenum_list)
+         
+        for k in eachindex(species_list)
+            pTlist = pTlists[k]
+            for wavenum in eachindex(wavenum_list)
+                vm_result_integrated[k,wavenum] += q_vector_total[wavenum]*conj(q_vector_total[wavenum])/length(event_list)
+                for i in eachindex(pTlist)
+                    vm_result[i,k,wavenum] += q_vector_pt[i,k,wavenum]*conj(q_vector_total[wavenum])/length(event_list) 
+                end
+            end
+        end
 
+    end
+
+    for k in eachindex(species_list)
+        pTlist = pTlists[k]
+        for wavenum in eachindex(wavenum_list) 
+            vm_result_integrated[k,wavenum] = sqrt(sqrt(vm_result_integrated[k,wavenum] * conj(vm_result_integrated[k,wavenum])))    
+            for i in eachindex(pTlist)   
+                vm_result[i,k,wavenum] = sqrt(vm_result[i,k,wavenum]* conj(vm_result[i,k,wavenum]))/vm_result_integrated[k,wavenum]
+            end
+        end
+    end
+    
+    vm_result_charged = dropdims(sum(vm_result, dims=2), dims=2)
+    vm_result_charged_integrated = dropdims(sum(vm_result_integrated, dims=1), dims=1)
+
+    return (vm_result=vm_result, vm_result_integrated=vm_result_integrated, vm_result_charged=vm_result_charged, vm_result_charged_integrated=vm_result_charged_integrated)
+
+   
+end
 
 """
 select_cc_events_glauber(data,cc_fraction)
@@ -333,4 +410,23 @@ function select_cc_events_glauber(data,cc_fraction)
     cc_ev_num = div(cc_fraction*Nev,100)
     selected_data = [data[sorted_indices[1+i*cc_ev_num:cc_ev_num+i*cc_ev_num]] for i in 0:cc_fraction-1]
     return selected_data
+end
+
+
+"""
+centralities_selection_events(events::Vector{T}, bins)
+
+divides data into bins based on final particle multiplicity
+"""
+function centralities_selection_events(events::Vector{T}, bins) where {T <: ObservableResult}
+    vn = extract_vn(events)
+    mult = [sum(vn[i,3,:,1,1]) for i in 1:length(events)]
+    event_perm = sortperm(mult, rev = true)
+    events_sorted = events[event_perm]
+
+    min_bias = length(events)
+    n_event_per_bin = Int(min_bias ÷ 100)
+    realBinVals = n_event_per_bin * bins
+    batches = MonteCarloGlauber.split_vector_by_indices(events_sorted, realBinVals)
+    return batches
 end
