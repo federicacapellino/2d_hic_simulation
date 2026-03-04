@@ -34,9 +34,9 @@
 
 "run parameter":
   
-  Nev: 1
-  checkpoint_interval: 1
-  checkpoint_file: "event_by_event_results_debug_full.h5"
+  Nev: 10000
+  checkpoint_interval: 500
+  checkpoint_file: "event_by_event_results_debug_all_particle.h5"
   gridpoints: 100
   xmax: 20.0 # fm
   wavenum: [2,3]
