@@ -42,7 +42,6 @@ else
 end
 
 @info "Loading configuration from: $config_file"
-#config = YAML.load_file(config_file)
 config = YAML.load_file(config_file)
 physics_params = config["physics parameter"]
 run_params = config["run parameter"]

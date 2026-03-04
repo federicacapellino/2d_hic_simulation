@@ -147,7 +147,6 @@ function run_event(
 
     phi = set_array(temperature_func .+ 0.01, :temperature, twod_visc_hydro_discrete)  #maybe offset too large?
     set_array!(phi, fug_func, :mu, twod_visc_hydro_discrete)
-    @show maximum(phi[8,:,:])
     
     # Plot phi[8,:,:] and save to PDF
     #p = heatmap(phi[8,:,:], title="phi[8,:,:]", xlabel="x", ylabel="y")
