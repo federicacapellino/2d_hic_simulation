@@ -13,6 +13,7 @@ using Base.Threads
 using YAML
 using LaTeXStrings
 using Statistics
+using DataFrames
 
 default(lw = 2, size=(800,600),xtickfontsize=16,ytickfontsize=16,xlabelfontsize=16,ylabelfontsize=16,legendfontsize=16,grid=false,framestyle=:box)
 
@@ -106,8 +107,6 @@ plot!([real(vns[i].vm_result_integrated[1,2]) for i in 1:4])
     end
 
 
-using YAML
-using DataFrames
 
 # 1. Load the raw data
 # Replace 'data.yaml' with your actual filename or the string content
@@ -162,8 +161,6 @@ raw_data = [YAML.load_file("/home/alice/2d_hic_simulation/expdata/HEPData-ins129
             YAML.load_file("/home/alice/2d_hic_simulation/expdata/HEPData-ins1297103-v1-Table_7.yaml")]
 df = parse_hep_data.(raw_data)
 
-println("Parsed Data (First 10 rows):")
-println(first(df, 10))
 
 # Example: Accessing metadata
 particle = raw_data["dependent_variables"][1]["qualifiers"][3]["value"]

@@ -9,5 +9,5 @@ function fastreso_reader(filename)
    Ep = sqrt.(pbar.^2 .+ m^2)
    itp = [interpolate((Ep,),a[:,n]./pbar[:],Gridded(Linear())) for n in 3:4] #interpolation of all the columns from 3 on, through linear interpolation
    ext = extrapolate.(itp, Ref(Flat()))   
-   return ext, minimum(Ep), maximum(Ep)
+   return ext, minimum(Ep), maximum(Ep), m
 end
