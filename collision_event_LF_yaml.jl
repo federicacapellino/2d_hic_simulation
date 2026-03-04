@@ -43,6 +43,8 @@ end
 
 @info "Loading configuration from: $config_file"
 config = YAML.load_file(config_file)
+#config = YAML.load_file("config.yaml")
+
 physics_params = config["physics parameter"]
 run_params = config["run parameter"]
 
@@ -100,7 +102,7 @@ else
 end
 
 artifact_toml = joinpath(@__DIR__, "Artifacts.toml")
-Pkg.ensure_artifact_installed("kernels", "Artifacts.toml")
+ensure_artifact_installed("kernels", "Artifacts.toml")
 kernels = artifact"kernels"
 
 #pion = particle_simple("pion", 0.13957, 1, 0)
@@ -115,7 +117,7 @@ const particle_full_k = particle_full("kaon", Fj[4], 1, 1, Fj[1])
 Fj = fastreso_reader(joinpath(kernels, "./kernels/Dc1865zer_total_T0.1560_Fj.out"))
 const particle_full_D0 = particle_full("D0", Fj[4], 1, 1, Fj[1])
 
-species_list = [particle_full_π, particle_full_p, particle_full_k]
+species_list = [particle_full_π, particle_full_p, particle_full_k, particle_full_D0]
 function run_event(
         participants, twod_visc_hydro_discrete, norm; eta_p = 0.0,
         wavenum_m = [2, 3], species_list = [particle_full_π, particle_full_p, particle_full_k]
