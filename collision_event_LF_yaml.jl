@@ -100,13 +100,19 @@ else
     participants=Participants(n1,n2,w,s_NN,k,p,b_tuple)
 end
 
-pion = particle_simple("pion", 0.13957, 1, 0)
-D0 = particle_simple("D0", 1.86483, 1, 1)
+kernels = artifact"kernels"
 
-Fj = fastreso_reader(pwd() * "/PDGid_211_total_T0.1560_Fj.out")
-const particle_full_π = particle_full("pion", 0.13957, 1, 0, Fj[1])
-Fj = fastreso_reader(pwd() * "/Dc1865zer_total_T0.1560_Fj.out")
-const particle_full_D0 = particle_full("D0", 1.86483, 1, 1, Fj[1])
+#pion = particle_simple("pion", 0.13957, 1, 0)
+#D0 = particle_simple("D0", 1.86483, 1, 1)
+
+Fj = fastreso_reader(joinpath(kernels, "./kernels/PDGid_211_total_T0.1560_Fj.out"))
+const particle_full_π = particle_full("pion", Fj[4], 1, 0, Fj[1])
+Fj = fastreso_reader(joinpath(kernels, "./kernels/PDGid_2212_total_T0.1560_Fj.out"))
+const particle_full_p = particle_full("proton", Fj[4], 1, 0, Fj[1])
+Fj = fastreso_reader(joinpath(kernels, "./kernels/PDGid_321_total_T0.1560_Fj.out"))
+const particle_full_k = particle_full("kaon", Fj[4], 1, 1, Fj[1])
+Fj = fastreso_reader(joinpath(kernels, "./kernels/Dc1865zer_total_T0.1560_Fj.out"))
+const particle_full_D0 = particle_full("D0", Fj[4], 1, 1, Fj[1])
 
 species_list = [particle_full_π]
 function run_event(

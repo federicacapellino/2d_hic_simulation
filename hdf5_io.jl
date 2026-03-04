@@ -1,5 +1,6 @@
+abstract type ObservableResultType end
 
-struct ObservableResult
+struct ObservableResult <: ObservableResultType
     glauber_multiplicity::Float64
     impact_parameter::Float64
     vn::Array{Float64,4} # (cos, sin, denom) x length(pTlist) x length(wavenum_m) x length(species_list)
@@ -9,6 +10,17 @@ null_observable() = ObservableResult(0.0, 0.0,Array{Float64}(undef, 3, 0, 0, 0))
 function null_observable(wavenum,species_list)
     pt_length_max = maximum(length.(pt_list.(species_list)))
     ObservableResult(0.0, 0.0, zeros(3, pt_length_max, length(wavenum), length(species_list)))
+end
+
+struct ObservableResult_old <: ObservableResultType
+    glauber_multiplicity::Float64
+    vn::Array{Float64,4} # (cos, sin, denom) x length(pTlist) x length(wavenum_m) x length(species_list)
+end
+
+null_observable() = ObservableResult_old(0.0,Array{Float64}(undef, 3, 0, 0, 0))
+function null_observable(wavenum,species_list)
+    pt_length_max = maximum(length.(pt_list.(species_list)))
+    ObservableResult_old(0.0, zeros(3, pt_length_max, length(wavenum), length(species_list)))
 end
 """
     append_to_dataset!(file, dataset_name, new_data)
@@ -72,7 +84,7 @@ end
 
 Extract glauber multiplicity values from ObservableResult vector.
 """
-extract_glauber_multiplicity(data::Vector{ObservableResult}) = 
+extract_glauber_multiplicity(data::Vector{T}) where T <: ObservableResultType = 
     [d.glauber_multiplicity for d in data]
 
 """
@@ -80,7 +92,7 @@ extract_glauber_multiplicity(data::Vector{ObservableResult}) =
 
 Extract vn values from ObservableResult vector.
 """
-extract_vn(data::Vector{ObservableResult}) = 
+extract_vn(data::Vector{T}) where T <: ObservableResultType = 
     [d.vn[i,j,k,l] for d in data, i in 1:3, j in 1:size(data[1].vn,2), k in 1:size(data[1].vn,3), l in 1:size(data[1].vn,4)]
 
 
@@ -183,6 +195,17 @@ function hdf5_to_ObservableResult(h5_file::AbstractString)
         
         Nev = size(glauber_data, 1)
         return [ObservableResult(glauber_data[i], impact_parameter_data[i], vn_data[i, :, :, :, :]) for i in 1:Nev]
+end
+
+function hdf5_to_ObservableResult_old(h5_file::AbstractString)
+    isfile(h5_file) || error("HDF5 file not found: $h5_file")
+
+    glauber_data, vn_data = h5open(h5_file, "r") do file
+        (read(file["glauber_multiplicity"]), read(file["vn"]))
+    end
+        
+        Nev = size(glauber_data, 1)
+        return [ObservableResult_old(glauber_data[i], vn_data[i, :, :, :, :]) for i in 1:Nev]
 end
 
 
