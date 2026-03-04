@@ -10,6 +10,7 @@ using MuladdMacro
 using OhMyThreads
 using Base.Threads
 using YAML
+using Artifacts
 @info "Julia threads" nthreads()
 
 include("MCglauber.jl")
@@ -76,7 +77,6 @@ const k = physics_params["initial conditions"]["k"]
 const p = physics_params["initial conditions"]["p"]
 b = physics_params["initial conditions"]["b"]
 
-
 # Additional parameters
 const tau_eta_par = physics_params["additional parameters"]["tau_eta_par"]
 const tau_zeta_par = physics_params["additional parameters"]["tau_zeta_par"]
@@ -100,6 +100,8 @@ else
     participants=Participants(n1,n2,w,s_NN,k,p,b_tuple)
 end
 
+artifact_toml = joinpath(@__DIR__, "Artifacts.toml")
+Pkg.ensure_artifact_installed("kernels", "Artifacts.toml")
 kernels = artifact"kernels"
 
 #pion = particle_simple("pion", 0.13957, 1, 0)
@@ -114,10 +116,10 @@ const particle_full_k = particle_full("kaon", Fj[4], 1, 1, Fj[1])
 Fj = fastreso_reader(joinpath(kernels, "./kernels/Dc1865zer_total_T0.1560_Fj.out"))
 const particle_full_D0 = particle_full("D0", Fj[4], 1, 1, Fj[1])
 
-species_list = [particle_full_π]
+species_list = [particle_full_π, particle_full_p, particle_full_k]
 function run_event(
         participants, twod_visc_hydro_discrete, norm; eta_p = 0.0,
-        wavenum_m = [2, 3], species_list = [pion, D0]
+        wavenum_m = [2, 3], species_list = [particle_full_π, particle_full_p, particle_full_k]
     )
     discretization = twod_visc_hydro_discrete.discretization
     #create event
@@ -181,19 +183,6 @@ function run_event(
 
     return ObservableResult(mult, b, vn.u), simulation_pars
 end
-
-
-#=function run_event_by_event(Nev)
-    return tmap(1:Nev) do i
-        println("Running event $i / $Nev")
-        result = run_event(
-            participants,
-            twod_visc_hydro_discrete,
-            norm; species_list = species_list
-        )
-        result
-    end
-end=#
 
 function run_event_by_event(Nev)
     return tmap(1:Nev) do i
