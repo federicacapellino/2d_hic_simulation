@@ -161,7 +161,7 @@ function dvn_dp_list_delta(fo,species_list, eta_p, wavenum_list; eta_min=-5.0, e
 end
 
 
-function spectra_event(result::T,species_list) where T <: ObservableResultType
+function spectra_event(result::ObservableResult,species_list)
     pTlists = pt_list.(species_list)
     pt_length_max = maximum(length.(pt_list.(species_list)))
     glauber, vn = result.glauber_multiplicity, result.vn
@@ -197,7 +197,7 @@ multiplicity_event(result::ObservableResult,species_list)
 
 returns the total multiplicity M of all charged particles and identified particles in the species list for a given event result
 """
-function multiplicity_event(result ::T,species_list) where T <: ObservableResultType
+function multiplicity_event(result ::ObservableResult,species_list)
     vn = result.vn
     pTlists = pt_list.(species_list)
     M = 0.
@@ -218,7 +218,7 @@ q_vector_event_pt_dependent(result::ObservableResult,species_list, wavenum_list)
 
 given a result::ObservableResult, computes the real q-vector as a function of pT for each species in species_list and wavenumber in wavenum_list
 """
-function q_vector_event_pt_dependent(result::T,species_list, wavenum_list) where T <: ObservableResultType
+function q_vector_event_pt_dependent(result::ObservableResult,species_list, wavenum_list)
     pTlists = pt_list.(species_list)
     pt_length_max = maximum(length.(pt_list.(species_list)))
     vn = result.vn
@@ -240,7 +240,7 @@ q_vector_event_pt_dependent(result::ObservableResult,species_list, wavenum_list)
 
 given a result::ObservableResult, computes the real q-vector as a function of pT for each species in species_list and wavenumber in wavenum_list
 """
-function q_vector_event_pt_dependent_complex(result::T,species_list, wavenum_list) where T <: ObservableResultType
+function q_vector_event_pt_dependent_complex(result::ObservableResult,species_list, wavenum_list)
     pTlists = pt_list.(species_list)
     pt_length_max = maximum(length.(pt_list.(species_list)))
     vn = result.vn
@@ -261,7 +261,7 @@ g_species_event_pt_dependent(result::ObservableResult,species_list)
 
 returns the multiplicity of each species in each pt bin normalized by the total multiplicity for a given event result
 """
-function g_species_event_pt_dependent(result::T,species_list) where T <: ObservableResultType
+function g_species_event_pt_dependent(result::ObservableResult,species_list)
     pTlists = pt_list.(species_list)
     pt_length_max = maximum(length.(pt_list.(species_list)))
     vn = result.vn
@@ -283,7 +283,7 @@ q_vector_event_integrated(result::ObservableResult,species_list, wavenum_list)
 
 given a result::ObservableResult, computes the integrated q-vector for each wavenumber in wavenum_list
 """
-function q_vector_event_integrated(result::T,species_list, wavenum_list) where T <: ObservableResultType
+function q_vector_event_integrated(result::ObservableResult,species_list, wavenum_list)
     pTlists = pt_list.(species_list)        
     vn = result.vn
     q_result = zeros(length(wavenum_list))
@@ -300,7 +300,7 @@ function q_vector_event_integrated(result::T,species_list, wavenum_list) where T
     return q_result
 end
 
-function q_vector_event_integrated_complex(result::T,species_list, wavenum_list) where T <: ObservableResultType
+function q_vector_event_integrated_complex(result::ObservableResult,species_list, wavenum_list)
     pTlists = pt_list.(species_list)        
     vn = result.vn
     q_result = zeros(Complex,length(wavenum_list))
@@ -418,7 +418,7 @@ centralities_selection_events(events::Vector{T}, bins)
 
 divides data into bins based on final particle multiplicity
 """
-function centralities_selection_events(events::Vector{T}, bins) where {T <: ObservableResultType}
+function centralities_selection_events(events::Vector{ObservableResult}, bins)
     vn = extract_vn(events)
     mult = [sum(vn[i,3,:,1,1]) for i in 1:length(events)]
     event_perm = sortperm(mult, rev = true)
