@@ -10,8 +10,9 @@ using MuladdMacro
 using OhMyThreads
 using Base.Threads
 using YAML
-using Artifacts
 @info "Julia threads" nthreads()
+
+kernels = Fluidum.root_kernels
 
 include("MCglauber.jl")
 include("hdf5_io.jl")
@@ -101,12 +102,6 @@ else
     participants=Participants(n1,n2,w,s_NN,k,p,b_tuple)
 end
 
-artifact_toml = joinpath(@__DIR__, "Artifacts.toml")
-ensure_artifact_installed("kernels", "Artifacts.toml")
-kernels = artifact"kernels"
-
-#pion = particle_simple("pion", 0.13957, 1, 0)
-#D0 = particle_simple("D0", 1.86483, 1, 1)
 
 Fj = fastreso_reader(joinpath(kernels, "./kernels/PDGid_211_total_T0.1560_Fj.out"))
 const particle_full_π = particle_full("pion", Fj[4], 1, 0, Fj[1])
